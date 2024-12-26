@@ -1,0 +1,568 @@
+{% extends 'base.html' %}
+
+{% block style %}
+<link rel="stylesheet" href = "{{url_for('static',filename='css/style_room.css')}}"
+    />
+{% endblock %}
+
+{% block title %}
+Room
+{% endblock %}
+
+{% block content %}
+<div id="alert-message"></div>
+
+    <div id="word-choosing-modal" class="modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"></h5>
+                </div>
+                <div class="modal-body">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="word-chosen">
+        <h2 id="word-chosen-heading" class ="word_of"></h2>
+        <p id="actual-word"></p>
+    </div>
+
+    <div class="countdown-timer">
+        <p id="count-down">0:00</p>
+    </div>
+
+    <div class="row margin-left-2 margin-right-2">
+        <div class="col-md-8">
+            <section class="drawing-board">
+                <canvas></canvas>
+            </section>
+
+            <section class="tools-board">
+                <div class="row">
+                    <ul class="options">
+                    <li class="option active tool" id="brush">
+                        <span>BRUSH</span>
+                    </li>
+                    <li class="option tool" id="eraser">
+                        <span>ERASER</span>
+                    </li>
+                    <li class="option">
+                        <input type="range" id="size-slider" min="1" max="30" value="5">
+                    </li>
+
+                    <button type="button" class="clear-canvas" id="clear-btn">Clear Canvas</button>
+                    </ul>
+                </div>
+
+            </section>
+        </div>
+
+        <div class="col-md-4">
+            <div class="container">
+                <div class="message-box" style="margin-left: auto;">
+                    <h2>Chat Room: {{code}}</h2>
+                    <div class="messages" id="messages"></div>
+                    <div class="inputs">
+                    <input type="text" rows="3" placeholder="Message" name="message" id="message" />
+                    <button type="button" name="send" id="send-btn" onclick="sendMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+
+<script type = "text/javascript">
+    let ipaddr = "{{ ip }}";
+    let webAddr = "http://" + ipaddr + ":5000";
+    var socketio = io.connect(webAddr);
+
+    const messages = document.getElementById("messages");
+    const message_button = document.getElementById("send-btn");
+    const canvas_clear_btn = document.getElementById("clear-btn");
+
+    let intervalId;
+    let canvasData;
+
+    const canvas = document.querySelector("canvas"),
+    toolBtns = document.querySelectorAll(".tool"),
+    sizeSlider = document.querySelector("#size-slider"),
+    colorBtns = document.querySelectorAll(".colors .option"),
+    colorPicker = document.querySelector("#color-picker"),
+    clearCanvas = document.querySelector(".clear-canvas"),
+    ctx = canvas.getContext("2d");
+
+
+    let prevMouseX, prevMouseY,
+    isDrawing = false,
+    selectedTool = "brush",
+    brushWidth = 5,
+    selectedColor = "#000";
+
+    const setCanvasBackground = () => {
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = selectedColor; 
+    }
+
+    window.addEventListener("load", () => {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    setCanvasBackground();
+    });
+
+
+    const drawing = (e) => {
+        if(!isDrawing) return; // if isDrawing is false return from here
+
+        if(selectedTool === "brush" || selectedTool === "eraser") {
+            // if selected tool is eraser then set strokeStyle to white 
+            // to paint white color on to the existing canvas content else set the stroke color to selected color
+            ctx.strokeStyle = selectedTool === "eraser" ? "#fff" : selectedColor;
+            ctx.lineTo(e.offsetX, e.offsetY); // creating line according to the mouse pointer
+            ctx.stroke(); // drawing/filling line with color
+            canvasData = canvas.toDataURL();
+            socketio.emit("canvas_data", { data: canvasData });
+        }
+    }
+
+
+
+    const startDraw = (e) => {
+    isDrawing = true;
+    prevMouseX = e.offsetX; 
+    prevMouseY = e.offsetY; 
+    ctx.beginPath(); 
+    ctx.lineWidth = brushWidth; 
+    ctx.strokeStyle = selectedColor; 
+    }
+
+    toolBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+            document.querySelector(".options .active").classList.remove("active");
+            btn.classList.add("active");
+            selectedTool = btn.id;
+        });
+    });
+
+    sizeSlider.addEventListener("change", () => brushWidth = sizeSlider.value);
+
+    clearCanvas.addEventListener("click", () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // clearing whole canvas
+        setCanvasBackground();
+        canvasData = canvas.toDataURL();
+        socketio.emit("canvas_data", { data: canvasData });
+    });
+
+
+    canvas.addEventListener("mousedown", startDraw);
+    canvas.addEventListener("mousemove", drawing);
+    canvas.addEventListener("mouseup", () => isDrawing = false);
+
+
+    const createMessage = (name,msg, socketid) => {
+        const actual = document.getElementById("actual-word");
+        const word = actual.textContent;
+        const time = document.getElementById("count-down").innerHTML;
+
+        console.log("msg: "+msg);
+
+        if(word.toLowerCase() == msg.toLowerCase())
+        {
+            msg = "guessed the Word";
+
+            const content = `
+            <div class = "text">
+                <span style = "color: green;">
+                    <strong>${name}</strong>: ${msg}
+                </span>
+
+                <span class = "muted">
+                    ${new Date().toLocaleString()}
+                </span>
+            </div>
+            `;
+
+            messages.innerHTML += content;
+
+            console.log(socketio.id + socketid);
+
+            if(socketio.id === socketid)
+            {
+                socketio.emit("correct_answer", {"name":name,"word":word,"time":time});
+            };
+            
+
+        }
+
+        else
+        {
+            const content = `
+            <div class = "text">
+                <span>
+                    <strong>${name}</strong>: ${msg}
+                </span>
+
+                <span class = "muted">
+                    ${new Date().toLocaleString()}
+                </span>
+            </div>
+            `;
+
+            messages.innerHTML += content;
+        };
+        
+    };
+
+    socketio.on('canvas_clear', function() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); 
+        setCanvasBackground();
+    });
+
+    socketio.on('canvas_update', function(data) {
+        console.log("imaging");
+        const canvas_data = data.data;
+        const img = new Image();
+        img.onload = function() {
+            ctx.drawImage(img,0,0);
+        };
+        img.src = canvas_data;
+    });
+
+    socketio.on('game_over', function(data) {
+        if(intervalId){
+            clearInterval(intervalId);
+        }
+
+        const modal = document.getElementById('word-choosing-modal');
+        const modalBody = modal.querySelector('.modal-body');
+        const modaltitle = modal.querySelector('.modal-title');
+
+        modaltitle.innerHTML = `GAME OVER`;
+        modalBody.innerHTML = '';
+
+        const p = document.createElement('p');
+        p.textContent = `${data.name}  WON BY ${data.points} POINTS`;
+        modalBody.appendChild(p);
+
+        modal.style.display = 'block';
+    });
+
+    socketio.on("round_end_display", function(data) {
+        const modal = document.getElementById('word-choosing-modal');
+        const modalBody = modal.querySelector('.modal-body');
+        const modaltitle = modal.querySelector('.modal-title');
+
+        modaltitle.innerHTML = `Word was ${data.word}`;
+
+        let names = data.names;
+        let points = data.points;
+
+        for (let i = 0; i < points.length; i++) {
+            for (let j = 0; j < points.length - i - 1; j++) {
+                if (points[j] < points[j + 1]) {
+                    [points[j], points[j + 1]] = [points[j + 1], points[j]];
+                    [names[j], names[j + 1]] = [names[j + 1], names[j]];
+                }
+            }
+        }
+
+        modalBody.innerHTML = '';
+        modalBody.innerHTML += '<br>';
+
+        for (let i = 0; i < names.length; i++) {
+            const p = document.createElement('p');
+            p.textContent = `${i + 1}. ${names[i]}: ${points[i]}`;
+            modalBody.appendChild(p);
+        }
+
+        modalBody.innerHTML += '<br>';
+
+        const nextRoundTimer = document.createElement('div');
+        nextRoundTimer.id = 'next-round-timer';
+        nextRoundTimer.textContent = 'next round: 5';
+        modalBody.appendChild(nextRoundTimer);
+        let time = 5;
+
+        const intervalId = setInterval(function() {
+            nextRoundTimer.innerHTML = `next round: ${time}`;
+            time--;
+
+            if (time == 0) {
+                clearInterval(intervalId);
+                modal.style.display = 'none';
+                socketio.emit('start_next_round', { "room": data.room ,"name": data.name});
+            }
+        }, 1000);
+
+        modal.style.display = 'block';
+    });
+
+
+    socketio.on("start_timer", function(data) {
+
+        if(intervalId){
+            clearInterval(intervalId);
+        }
+        
+        const timer = document.getElementById("count-down");
+        timer.innerHTML = `2:00`;
+
+        const actualword = document.getElementById("actual-word");
+        word = actualword.textContent;
+
+        const startingMinutes = data.starttime;
+        let time = startingMinutes * 60;
+
+        intervalId = setInterval(function() {
+            const minutes = Math.floor(time/60);
+            let seconds = time % 60;
+
+            console.log(minutes + " " + seconds);
+
+            if(seconds == 0 && minutes == 0)
+            {
+                console.log("times up");
+                clearInterval(intervalId);
+                socketio.emit("round_end",{"word":word,"room":data.room,"name":data.name});
+            }
+
+            seconds = seconds < 10 ? '0' + seconds : seconds;
+
+            timer.innerHTML = `${minutes}: ${seconds}`;
+            time--;
+        },1000);
+    });
+
+    socketio.on("correct_answer_display", function(data) {
+        const heading = document.getElementById('word-chosen-heading');
+        heading.textContent = data.word;
+    });
+
+    const display_full_word = (word) => {
+        const heading = document.getElementById('word-chosen-heading');
+        heading.textContent = word;
+
+        const actual = document.getElementById('actual-word');
+        actual.textContent = word;
+
+        actual.style.display = 'none';
+    };
+
+    const convert_to_underlined_word = (word) => {
+        underlined_word = "";
+        for(i=0;i < word.length; i++)
+        {
+            if(word[i] == " ")
+            {
+                underlined_word += "  ";
+            }
+            else
+            {
+                underlined_word += "_" + " ";
+            };
+        };
+
+        return underlined_word;
+    };
+
+    const display_underlined_word = (word) => {
+        const heading = document.getElementById('word-chosen-heading');
+        heading.textContent = convert_to_underlined_word(word);
+
+        const actual = document.getElementById('actual-word');
+        actual.textContent = word;
+
+        actual.style.display = 'none';
+    };
+
+    socketio.on("word-display", function(data) {
+        console.log("Received 'word_display' event");
+        word = data.word;
+        console.log("hello");
+        if(socketio.id == data.id)
+        {
+            console.log("full word");
+            display_full_word(word);
+        }
+        else
+        {
+            console.log("underlined word");
+            display_underlined_word(word);
+        };
+    });
+
+    const selected_word = (word, modal, id, room, name) => {
+        socketio.emit("wordDisplay", {"word":word,"id":id,"room":room,"name":name});
+        modal.style.display = 'none';
+        console.log("word: " + word);
+    };
+
+    const chooseWord = (word1, word2, word3, id, room,name) => {
+        const modal = document.getElementById('word-choosing-modal');
+        const modalBody = modal.querySelector('.modal-body');
+        const modaltitle = modal.querySelector('.modal-title');
+
+        modaltitle.innerHTML = `Choose a Word`;
+
+        modalBody.innerHTML = '';
+
+        const word1Button = document.createElement('button');
+        word1Button.className = 'btn btn-primary';
+        word1Button.textContent = word1;
+        word1Button.addEventListener('click', () => {
+            selected_word(word1, modal, id, room,name);
+        });
+        modalBody.appendChild(word1Button);
+
+        const word2Button = document.createElement('button');
+        word2Button.className = 'btn btn-primary';
+        word2Button.textContent = word2;
+        word2Button.addEventListener('click', () => {
+            selected_word(word2, modal, id, room,name);
+        });
+        modalBody.appendChild(word2Button);
+
+        const word3Button = document.createElement('button');
+        word3Button.className = 'btn btn-primary';
+        word3Button.textContent = word3;
+        word3Button.addEventListener('click', () => {
+            selected_word(word3, modal, id, room,name);
+        });
+        modalBody.appendChild(word3Button);
+
+        modal.style.display = 'block';
+    };
+
+    const enable_drawing = () => {
+        canvas.addEventListener("mousedown", startDraw);
+        canvas.addEventListener("mousemove", drawing);
+        canvas.addEventListener("mouseup", () => isDrawing = false);
+        clearCanvas.addEventListener("click", () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            setCanvasBackground();
+            canvasData = canvas.toDataURL();
+            socketio.emit("canvas_data", { data: canvasData });
+        });
+        toolBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                document.querySelector(".options .active").classList.remove("active");
+                btn.classList.add("active");
+                selectedTool = btn.id;
+            });
+        });
+    }
+
+    const disable_drawing = () => {
+        canvas.removeEventListener("mousedown", startDraw);
+        canvas.removeEventListener("mousemove", drawing);
+        canvas.removeEventListener("mouseup", () => isDrawing = false);
+
+        clearCanvas.removeEventListener("click", () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            setCanvasBackground();
+            canvasData = canvas.toDataURL();
+            socketio.emit("canvas_data", { data: canvasData });
+        });
+        toolBtns.forEach(btn => {
+            btn.removeEventListener("click", () => {
+                document.querySelector(".options .active").classList.remove("active");
+                btn.classList.add("active");
+                selectedTool = btn.id;
+            });
+        });
+
+    };
+
+    socketio.on("btn_state", function(data) {
+        var userState = data.state;
+
+        if(userState == "waiting") {
+            console.log("waiting: disable");
+            console.log(userState);
+            message_button.disabled = true;
+            canvas_clear_btn.disabled = true;
+            disable_drawing();
+        }
+        else if (userState == "active")
+        {
+            console.log("active: enable");
+            console.log(userState);
+            message_button.disabled = false;
+            canvas_clear_btn.disabled = true;
+            disable_drawing();
+        }
+        else if(userState == "drawing")
+        {
+            console.log("drawing")
+            message_button.disabled = true;
+            canvas_clear_btn.disabled = false;
+            enable_drawing();
+            word1 = data.word1;
+            word2 = data.word2;
+            word3 = data.word3;
+            id = data.id;
+            room = data.room;
+            name = data.name;
+            chooseWord(word1,word2,word3,id,room,name);
+        };
+    });
+
+    socketio.on("message", (data) => {
+        createMessage(data.name, data.message, data.socketid);
+    });
+
+    socketio.on("flash_message", (data) => {
+        const alert = document.getElementById('alert-message')
+        alert.classList.add('alert', 'alter-dismissable', 'fade', 'show');
+        
+        if(data.category == "error")
+        {
+            if(alert.classList.contains('alert-success'))
+            {
+                alert.classList.remove('alert-sucess')
+            };
+            alert.classList.add('alert-danger');
+
+        }
+        else
+        {
+            if(alert.classList.contains('alert-danger'))
+            {
+                alert.classList.remove('alert-danger')
+            };
+            alert.classList.add('alert-success');
+        }
+
+        alert.setAttribute("role","alert");
+
+        alert.innerHTML = `
+            ${data.message}
+            <button type = "button" class = "close" data-dismiss = "alert">
+                <span aria-hidden = "true">&times;</span>
+            </button>
+            `;
+
+    });
+
+
+    const sendMessage = () => {
+        const message = document.getElementById("message")
+        if(message.value == "") return;
+
+        socketio.emit("message", {data: message.value})
+        message.value = "";
+    };
+
+
+</script>
+
+{% for msg in messages %}
+    <script type = "text/javascript">
+        createMessage("{{msg.name}}","{{msg.message}}");
+    </script>
+{% endfor %}
+{% endblock %}

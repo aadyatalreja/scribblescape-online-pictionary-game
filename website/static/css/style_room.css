@@ -1,0 +1,194 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;1,300;1,700&display=swap');
+
+body{
+    min-height: 100vh;
+    background: url("images/home_back.jpg");
+    background-size: cover;
+    overflow: hidden;
+}
+  
+.message-box {
+    border: 1px solid #dee2e6; /* Light gray border */
+    border-radius: 0.25rem; /* Rounded corners */
+    background-color: #fff; /* White background */
+    padding: 1rem; /* Padding around the content */
+    height: 80vh;
+    display: flex;
+    flex-direction: column;
+    width: 30vw; /* Reduced width */
+    align-items: stretch;
+    float: right;
+    margin-right: 28px;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15); /* Subtle box shadow */
+}
+
+.messages{
+    overflow-y: scroll;
+    flex: 1;
+    width: 100%;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+#message {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 16px;
+    width: 70%;
+    box-sizing: border-box;
+    margin-bottom: 5px;
+    margin-top: 15px;
+    height: 40px; /* Set the height of the input field */
+}
+  
+#send-btn {
+    background-color: #414040;
+    margin-top: 15px;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 16px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    height: 40px; /* Set the height of the button */
+    margin-left: 10px; /* Add some space between the input field and button */
+}
+
+#send-btn:hover {
+    background-color: #0a0a0a;
+}
+
+
+.container-fluid {
+    padding: 20px;
+}
+
+.row {
+    margin-bottom: 20px;
+}
+
+.word-chosen{
+    position: relative;
+    top: 20px;
+    left: 20px;
+    padding: 10px;
+}
+.inputs {
+    padding: 10px;
+    display: flex;
+}
+
+.word_of {
+    color: #fff;
+}
+
+.countdown-timer {
+    font-size: 2rem;
+    color: white;
+    text-align: center;
+    margin-bottom: 20px;
+    font-weight: 700;
+}
+
+@media (max-width: 767.98px) {
+    .countdown-timer {
+        font-size: 1.5rem;
+    }
+}
+
+#message {
+    flex: 1;
+}
+
+.text {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.muted {
+    font-size: 10px;
+    color: darkgrey;
+}
+
+.clear-canvas {
+    background-color: #414040;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-size: 16px;
+    margin-top: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    height: 40px; /* Set the height of the button */
+    margin-left: 10px; /* Add some space between the input field and button */
+}
+  
+.clear-canvas:hover {
+    background-color: #0a0a0a;
+}
+
+.drawing-board {
+    margin-left: 30px;
+    margin-right: 0%;
+    background-color: white;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    height: 71vh;
+}
+
+.tools-board {
+    margin-left: 30px;
+    margin-right: 0%;
+    background-color: #333;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    padding: 5px;
+}
+
+.drawing-board canvas{
+width: 100%;
+height: 100%;
+}
+
+section{
+    background: #fff;
+    border-radius: 7px;
+}
+
+.row .options{
+    list-style: none;
+    margin: 10px 0 0 5px;
+    display: flex;
+  }
+  .row .options .option{
+    display: flex;
+    cursor: pointer;
+    align-items: center;
+    margin-bottom: 10px;
+    margin-left: 5px;
+    margin-top: 12px;
+  }
+  .option:is(:hover, .active) img{
+    filter: invert(17%) sepia(90%) saturate(3000%) hue-rotate(900deg) brightness(100%) contrast(100%);
+  }
+  .option :where(span, label){
+    color: #5A6168;
+    cursor: pointer;
+    padding-left: 10px;
+  }
+  .option:is(:hover, .active) :where(span, label){
+    color: #4A98F7;
+  }
+
+  .option #size-slider{
+    width: 100%;
+    height: 5px;
+    margin-top: 7px;
+    margin-left: 5px;
+  }
